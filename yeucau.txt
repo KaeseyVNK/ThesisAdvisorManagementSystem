@@ -1,0 +1,125 @@
+# Thesis Advisor Management System
+
+1. Introduction
+
+1.1 Purpose
+
+The Thesis Advisor Management System is designed to facilitate the management and tracking of thesis guidance activities between students and faculty members. It provides a structured platform to record student details, faculty advisors, and their interactions throughout the thesis advisory process.
+
+1.2 Scope
+
+This web-based application enables universities or academic institutions to efficiently manage student-advisor relationships. The system allows students to register for thesis guidance, faculty members to manage assigned students, and administrators to oversee the process. The application is built using PHP with MySQL as the database backend.
+
+1.3 Intended Audience and Use
+
+Students: To register and view their assigned advisor.
+
+Faculty Members: To manage student thesis guidance.
+
+Administrators: To monitor and manage overall thesis supervision.
+
+1.4 Assumptions and Dependencies
+
+Users must have valid authentication credentials.
+
+The system requires a running MySQL database (ThesisManagementDB).
+
+Internet connectivity is required for web-based access.
+
+2. Functional Requirements
+
+2.1 User Roles
+
+Student
+
+Check guidance status.
+
+View assigned advisor details.
+
+Faculty Member
+
+assigned advisor for each student.
+
+Approve or reject thesis topics.
+
+Administrator
+
+Manage faculty and student records.
+
+Assign students to faculty members.
+
+Generate reports on thesis progress.
+
+2.2 Core Features
+
+User Authentication & Role-based Access Control
+
+Student Registration & Thesis Assignment
+
+Advisor Management Dashboard
+
+Progress Tracking and Notes
+
+Reporting & Analytics
+
+3. Non-Functional Requirements
+
+Performance: The system should handle up to 500 concurrent users.
+
+Security: Data should be encrypted and protected from unauthorized access.
+
+Scalability: The system should allow future expansion for additional features.
+
+Usability: A user-friendly interface with responsive design.
+
+4. Database Schema Overview
+
+SinhVien (Students): Stores student details.
+
+GiangVien (Faculty Members): Stores advisor details.
+
+SinhVienGiangVienHuongDan (Advisory Mapping): Links students with advisors.
+
+5. Technologies Used
+
+Frontend: HTML, CSS, JavaScript
+
+Backend: PHP
+
+Database: MySQL
+
+Hosting: Shared Hosting or Cloud Hosting (cPanel, AWS, DigitalOcean, etc.)
+
+6. Constraints and Assumptions
+
+The system requires a stable database connection.
+
+Users must use modern web browsers for the best experience.
+
+System downtime should be minimized to under 1% per month.
+
+7. Deployment Strategy
+
+Prepare Hosting Environment
+
+Choose a hosting provider supporting PHP & MySQL.
+
+Upload project files via FTP or File Manager.
+
+Configure MySQL database and import schema.
+
+Configure Application
+
+Update database connection settings in config.php.
+
+Set proper file permissions for security.
+
+Testing & Go-Live
+
+Test the application for any errors.
+
+Deploy to production and monitor system performance.
+
+8. Conclusion
+
+The Thesis Advisor Management System is a scalable and user-friendly solution for managing thesis supervision in academic institutions. It streamlines student-advisor interactions, ensures progress tracking, and improves administrative efficiency.

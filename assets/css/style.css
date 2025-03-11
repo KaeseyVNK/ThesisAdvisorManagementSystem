@@ -1,0 +1,199 @@
+/* Custom CSS for Thesis Advisor Management System */
+
+/* General Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+/* Header Styles */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* Card Styles */
+.card {
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-header {
+    font-weight: bold;
+    background-color: #f8f9fa;
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+    text-align: center;
+    padding: 20px;
+}
+
+.dashboard-card i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    color: #0d6efd;
+}
+
+.dashboard-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.dashboard-card p {
+    color: #6c757d;
+}
+
+/* Form Styles */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+/* Table Styles */
+.table {
+    background-color: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.table thead {
+    background-color: #0d6efd;
+    color: #fff;
+}
+
+/* Status Badges */
+.badge-success {
+    background-color: #198754;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+}
+
+.badge-info {
+    background-color: #0dcaf0;
+}
+
+/* Footer Styles */
+footer {
+    margin-top: auto;
+}
+
+footer a {
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+/* Login/Register Form */
+.auth-form {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.auth-form .form-title {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.auth-form .form-icon {
+    text-align: center;
+    font-size: 4rem;
+    color: #0d6efd;
+    margin-bottom: 20px;
+}
+
+/* Profile Page */
+.profile-header {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.profile-img {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 5px solid #f8f9fa;
+}
+
+/* Progress Timeline */
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background-color: #0d6efd;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -34px;
+    top: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #0d6efd;
+}
+
+.timeline-date {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .profile-img {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .dashboard-card i {
+        font-size: 2rem;
+    }
+} 

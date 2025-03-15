@@ -10,6 +10,13 @@ if (!isLoggedIn() || !isStudent()) {
 
 // Get student details
 $studentDetails = getCurrentUserDetails();
+
+// Kiểm tra nếu không tìm thấy thông tin sinh viên
+if (!$studentDetails) {
+    setFlashMessage('Không tìm thấy thông tin sinh viên cho tài khoản của bạn. Vui lòng liên hệ quản trị viên.', 'danger');
+    redirect('../dashboard.php');
+}
+
 $studentId = $studentDetails['SinhVienID'];
 
 // Get advisor details

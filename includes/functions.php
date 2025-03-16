@@ -144,10 +144,23 @@ function getUserById($userId) {
  */
 function getStudentByUserId($userId) {
     $conn = getDBConnection();
-    $stmt = $conn->prepare("SELECT * FROM SinhVien WHERE UserID = :userId");
-    $stmt->bindParam(':userId', $userId, PDO::PARAM_INT);
-    $stmt->execute();
-    return $stmt->fetch(PDO::FETCH_ASSOC);
+    try {
+        // Khắc phục lỗi: Thêm log để debug
+        $stmt = $conn->prepare("SELECT * FROM SinhVien WHERE UserID = :userId");
+        $stmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Nếu không tìm thấy sinh viên, ghi log lỗi
+        if (!$result) {
+            error_log("Không tìm thấy sinh viên với UserID: " . $userId);
+        }
+        
+        return $result;
+    } catch (PDOException $e) {
+        error_log("Lỗi khi truy vấn thông tin sinh viên: " . $e->getMessage());
+        return false;
+    }
 }
 
 /**
@@ -158,10 +171,22 @@ function getStudentByUserId($userId) {
  */
 function getFacultyByUserId($userId) {
     $conn = getDBConnection();
-    $stmt = $conn->prepare("SELECT * FROM GiangVien WHERE UserID = :userId");
-    $stmt->bindParam(':userId', $userId, PDO::PARAM_INT);
-    $stmt->execute();
-    return $stmt->fetch(PDO::FETCH_ASSOC);
+    try {
+        $stmt = $conn->prepare("SELECT * FROM GiangVien WHERE UserID = :userId");
+        $stmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Nếu không tìm thấy giảng viên, ghi log lỗi
+        if (!$result) {
+            error_log("Không tìm thấy giảng viên với UserID: " . $userId);
+        }
+        
+        return $result;
+    } catch (PDOException $e) {
+        error_log("Lỗi khi truy vấn thông tin giảng viên: " . $e->getMessage());
+        return false;
+    }
 }
 
 /**
@@ -178,9 +203,19 @@ function getCurrentUserDetails() {
     $role = getCurrentUserRole();
     
     if ($role === 'student') {
-        return getStudentByUserId($userId);
+        $student = getStudentByUserId($userId);
+        if (!$student) {
+            error_log("Lỗi: Tài khoản sinh viên (UserID: {$userId}) không tìm thấy thông tin tương ứng trong bảng SinhVien");
+            setFlashMessage('Tài khoản của bạn chưa được liên kết với thông tin sinh viên. Vui lòng liên hệ quản trị viên.', 'danger');
+        }
+        return $student;
     } elseif ($role === 'faculty') {
-        return getFacultyByUserId($userId);
+        $faculty = getFacultyByUserId($userId);
+        if (!$faculty) {
+            error_log("Lỗi: Tài khoản giảng viên (UserID: {$userId}) không tìm thấy thông tin tương ứng trong bảng GiangVien");
+            setFlashMessage('Tài khoản của bạn chưa được liên kết với thông tin giảng viên. Vui lòng liên hệ quản trị viên.', 'danger');
+        }
+        return $faculty;
     } elseif ($role === 'admin') {
         return getUserById($userId);
     }

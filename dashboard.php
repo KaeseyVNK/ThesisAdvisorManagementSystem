@@ -124,6 +124,27 @@ $pageTitle = 'Bảng điều khiển';
 include 'includes/header.php';
 ?>
 
+<title>Dashboard - Hệ thống quản lý đồ án</title>
+<style>
+    .notification-list .unread,
+    .assignment-list .unread {
+        background-color: #f0f7ff;
+        border-left: 3px solid #0d6efd;
+        font-weight: 500;
+    }
+    
+    .notification-list .list-group-item,
+    .assignment-list .list-group-item {
+        transition: all 0.2s ease;
+    }
+    
+    .notification-list .list-group-item:hover,
+    .assignment-list .list-group-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+</style>
+
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">
@@ -491,6 +512,207 @@ include 'includes/header.php';
                         <?php else: ?>
                             <div class="alert alert-info mb-0">
                                 <i class="fas fa-info-circle me-2"></i>Bạn chưa được phân công đề tài.
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-bell me-2 text-primary"></i>Thông báo mới nhất
+                        </h5>
+                        <a href="student/notifications.php" class="btn btn-sm btn-primary">
+                            <i class="fas fa-list me-1"></i>Xem tất cả
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <?php
+                        // Lấy 5 thông báo mới nhất
+                        $stmt = $conn->prepare("
+                            SELECT 
+                                tb.ThongBaoID, tb.TieuDe, tb.NgayTao,
+                                gv.HoTen as TenGiangVien,
+                                tbsv.DaDoc
+                            FROM ThongBaoSinhVien tbsv
+                            JOIN ThongBao tb ON tbsv.ThongBaoID = tb.ThongBaoID
+                            JOIN GiangVien gv ON tb.GiangVienID = gv.GiangVienID
+                            WHERE tbsv.SinhVienID = :studentId
+                            ORDER BY tb.NgayTao DESC
+                            LIMIT 5
+                        ");
+                        $stmt->bindParam(':studentId', $studentId);
+                        $stmt->execute();
+                        $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        // Đếm số thông báo chưa đọc
+                        $stmt = $conn->prepare("
+                            SELECT COUNT(*) as UnreadCount
+                            FROM ThongBaoSinhVien
+                            WHERE SinhVienID = :studentId AND DaDoc = 0
+                        ");
+                        $stmt->bindParam(':studentId', $studentId);
+                        $stmt->execute();
+                        $unreadCount = $stmt->fetch(PDO::FETCH_ASSOC)['UnreadCount'];
+                        ?>
+                        
+                        <?php if (count($notifications) > 0): ?>
+                            <?php if ($unreadCount > 0): ?>
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle me-2"></i>Bạn có <strong><?php echo $unreadCount; ?></strong> thông báo chưa đọc.
+                            </div>
+                            <?php endif; ?>
+                            
+                            <div class="list-group notification-list">
+                                <?php foreach ($notifications as $notification): ?>
+                                <a href="student/view-notification.php?id=<?php echo $notification['ThongBaoID']; ?>" class="list-group-item list-group-item-action <?php echo !$notification['DaDoc'] ? 'unread' : ''; ?>">
+                                    <div class="d-flex w-100 justify-content-between align-items-center">
+                                        <h6 class="mb-1">
+                                            <?php if (!$notification['DaDoc']): ?>
+                                            <span class="badge bg-primary me-2">Mới</span>
+                                            <?php endif; ?>
+                                            <?php echo htmlspecialchars($notification['TieuDe']); ?>
+                                        </h6>
+                                        <small class="text-muted"><?php echo date('d/m/Y H:i', strtotime($notification['NgayTao'])); ?></small>
+                                    </div>
+                                    <small class="text-muted">
+                                        <i class="fas fa-user me-1"></i> <?php echo htmlspecialchars($notification['TenGiangVien']); ?>
+                                    </small>
+                                </a>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Bạn chưa có thông báo nào.
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-book me-2 text-primary"></i>Bài tập mới nhất
+                        </h5>
+                        <a href="student/assignments.php" class="btn btn-sm btn-primary">
+                            <i class="fas fa-list me-1"></i>Xem tất cả
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <?php
+                        // Lấy 5 bài tập mới nhất
+                        $stmt = $conn->prepare("
+                            SELECT 
+                                bt.BaiTapID, bt.TieuDe, bt.HanNop, bt.NgayTao,
+                                gv.HoTen as TenGiangVien,
+                                btsv.DaDoc,
+                                nbt.NopBaiTapID as NopBaiID, nbt.TrangThai as TrangThaiNop
+                            FROM BaiTapSinhVien btsv
+                            JOIN BaiTap bt ON btsv.BaiTapID = bt.BaiTapID
+                            JOIN GiangVien gv ON bt.GiangVienID = gv.GiangVienID
+                            LEFT JOIN NopBaiTap nbt ON bt.BaiTapID = nbt.BaiTapID AND nbt.SinhVienID = btsv.SinhVienID
+                            WHERE btsv.SinhVienID = :studentId
+                            ORDER BY bt.NgayTao DESC
+                            LIMIT 5
+                        ");
+                        $stmt->bindParam(':studentId', $studentId);
+                        $stmt->execute();
+                        $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        // Đếm số bài tập chưa đọc
+                        $stmt = $conn->prepare("
+                            SELECT COUNT(*) as UnreadCount
+                            FROM BaiTapSinhVien
+                            WHERE SinhVienID = :studentId AND DaDoc = 0
+                        ");
+                        $stmt->bindParam(':studentId', $studentId);
+                        $stmt->execute();
+                        $unreadAssignments = $stmt->fetch(PDO::FETCH_ASSOC)['UnreadCount'];
+                        
+                        // Đếm số bài tập chưa nộp và sắp đến hạn (trong vòng 3 ngày)
+                        $stmt = $conn->prepare("
+                            SELECT COUNT(*) as DueCount
+                            FROM BaiTapSinhVien btsv
+                            JOIN BaiTap bt ON btsv.BaiTapID = bt.BaiTapID
+                            LEFT JOIN NopBaiTap nbt ON bt.BaiTapID = nbt.BaiTapID AND nbt.SinhVienID = btsv.SinhVienID
+                            WHERE btsv.SinhVienID = :studentId 
+                            AND (nbt.NopBaiTapID IS NULL OR nbt.TrangThai = 'Chưa hoàn thành')
+                            AND bt.HanNop > NOW() 
+                            AND bt.HanNop <= DATE_ADD(NOW(), INTERVAL 3 DAY)
+                        ");
+                        $stmt->bindParam(':studentId', $studentId);
+                        $stmt->execute();
+                        $dueAssignments = $stmt->fetch(PDO::FETCH_ASSOC)['DueCount'];
+                        ?>
+                        
+                        <?php if (count($assignments) > 0): ?>
+                            <?php if ($unreadAssignments > 0): ?>
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle me-2"></i>Bạn có <strong><?php echo $unreadAssignments; ?></strong> bài tập mới chưa đọc.
+                            </div>
+                            <?php endif; ?>
+                            
+                            <?php if ($dueAssignments > 0): ?>
+                            <div class="alert alert-warning mb-3">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Bạn có <strong><?php echo $dueAssignments; ?></strong> bài tập sắp đến hạn nộp.
+                            </div>
+                            <?php endif; ?>
+                            
+                            <div class="list-group assignment-list">
+                                <?php foreach ($assignments as $assignment): ?>
+                                <a href="student/view-assignment.php?id=<?php echo $assignment['BaiTapID']; ?>" class="list-group-item list-group-item-action <?php echo !$assignment['DaDoc'] ? 'unread' : ''; ?>">
+                                    <div class="d-flex w-100 justify-content-between align-items-center">
+                                        <h6 class="mb-1">
+                                            <?php if (!$assignment['DaDoc']): ?>
+                                            <span class="badge bg-primary me-2">Mới</span>
+                                            <?php endif; ?>
+                                            <?php echo htmlspecialchars($assignment['TieuDe']); ?>
+                                        </h6>
+                                        <small class="text-muted">Hạn nộp: <?php echo date('d/m/Y H:i', strtotime($assignment['HanNop'])); ?></small>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-user me-1"></i> <?php echo htmlspecialchars($assignment['TenGiangVien']); ?>
+                                        </small>
+                                        <?php
+                                        $now = new DateTime();
+                                        $deadline = new DateTime($assignment['HanNop']);
+                                        $status = '';
+                                        $statusClass = '';
+                                        
+                                        if (!empty($assignment['NopBaiID'])) {
+                                            if ($assignment['TrangThaiNop'] == 'Đã nộp') {
+                                                $status = 'Đã nộp';
+                                                $statusClass = 'bg-success';
+                                            } else {
+                                                $status = 'Chưa hoàn thành';
+                                                $statusClass = 'bg-warning';
+                                            }
+                                        } else {
+                                            if ($now > $deadline) {
+                                                $status = 'Quá hạn';
+                                                $statusClass = 'bg-danger';
+                                            } else if ($deadline->diff($now)->days <= 3) {
+                                                $status = 'Sắp hết hạn';
+                                                $statusClass = 'bg-warning';
+                                            } else {
+                                                $status = 'Chưa nộp';
+                                                $statusClass = 'bg-secondary';
+                                            }
+                                        }
+                                        ?>
+                                        <span class="badge <?php echo $statusClass; ?>"><?php echo $status; ?></span>
+                                    </div>
+                                </a>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Bạn chưa có bài tập nào.
                             </div>
                         <?php endif; ?>
                     </div>

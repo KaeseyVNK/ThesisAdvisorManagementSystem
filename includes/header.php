@@ -87,6 +87,13 @@ require_once __DIR__ . '/functions.php';
                                             <i class="fas fa-tasks me-2"></i>Phân công
                                         </a></li>
                                         <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/faculty/notifications.php">
+                                            <i class="fas fa-bell me-2"></i>Thông báo
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/faculty/assignments.php">
+                                            <i class="fas fa-clipboard-list me-2"></i>Bài tập
+                                        </a></li>
+                                        <li><hr class="dropdown-divider"></li>
                                         <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/faculty/progress.php">
                                             <i class="fas fa-chart-line me-2"></i>Tiến độ
                                         </a></li>
@@ -103,6 +110,39 @@ require_once __DIR__ . '/functions.php';
                                         </a></li>
                                         <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/student/thesis.php">
                                             <i class="fas fa-book me-2"></i>Đề tài
+                                        </a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/student/notifications.php">
+                                            <i class="fas fa-bell me-2"></i>Thông báo
+                                            <?php 
+                                            if (isLoggedIn() && isStudent()) {
+                                                $studentId = getCurrentUserDetails()['SinhVienID'];
+                                                $conn = getDBConnection();
+                                                $stmt = $conn->prepare("SELECT COUNT(*) as count FROM ThongBaoSinhVien WHERE SinhVienID = :studentId AND DaDoc = 0");
+                                                $stmt->bindParam(':studentId', $studentId);
+                                                $stmt->execute();
+                                                $unreadCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+                                                if ($unreadCount > 0) {
+                                                    echo '<span class="badge bg-danger ms-2">' . $unreadCount . '</span>';
+                                                }
+                                            }
+                                            ?>
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/student/assignments.php">
+                                            <i class="fas fa-clipboard-list me-2"></i>Bài tập
+                                            <?php 
+                                            if (isLoggedIn() && isStudent()) {
+                                                $studentId = getCurrentUserDetails()['SinhVienID'];
+                                                $conn = getDBConnection();
+                                                $stmt = $conn->prepare("SELECT COUNT(*) as count FROM BaiTapSinhVien WHERE SinhVienID = :studentId AND DaDoc = 0");
+                                                $stmt->bindParam(':studentId', $studentId);
+                                                $stmt->execute();
+                                                $unreadCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+                                                if ($unreadCount > 0) {
+                                                    echo '<span class="badge bg-danger ms-2">' . $unreadCount . '</span>';
+                                                }
+                                            }
+                                            ?>
                                         </a></li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/student/progress.php">

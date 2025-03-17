@@ -184,6 +184,54 @@ include '../includes/header.php';
         </div>
     </div>
 </div>
+
+<!-- Danh sách tiến độ -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Lịch sử cập nhật tiến độ</h5>
+            </div>
+            <div class="card-body">
+                <?php if (count($progresses) > 0): ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nội dung</th>
+                                    <th>Trạng thái</th>
+                                    <th>Ngày cập nhật</th>
+                                    <th>Phản hồi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($progresses as $progress): ?>
+                                <tr>
+                                    <td><?php echo nl2br(htmlspecialchars($progress['NoiDung'])); ?></td>
+                                    <td>
+                                        <span class="badge bg-<?php 
+                                            echo $progress['TrangThai'] == 'Đã hoàn thành' ? 'success' : 
+                                                ($progress['TrangThai'] == 'Đang thực hiện' ? 'primary' : 'warning'); 
+                                        ?>">
+                                            <?php echo $progress['TrangThai']; ?>
+                                        </span>
+                                    </td>
+                                    <td><?php echo date('d/m/Y H:i', strtotime($progress['NgayCapNhat'])); ?></td>
+                                    <td><?php echo $progress['PhanHoi'] ? nl2br(htmlspecialchars($progress['PhanHoi'])) : 'Chưa có phản hồi'; ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>Bạn chưa có bản cập nhật tiến độ nào.
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
 <?php elseif (isset($approvedProposal) && $approvedProposal): ?>
 <div class="row mb-4">
     <div class="col-md-12">
@@ -286,131 +334,6 @@ include '../includes/header.php';
     <div class="col-md-12">
         <div class="alert alert-warning">
             <i class="fas fa-exclamation-triangle me-2"></i>Bạn chưa có đề tài luận văn. Vui lòng <a href="../student/thesis.php">đăng ký đề tài</a> hoặc <a href="../student/thesis.php">đề xuất đề tài mới</a>.
-        </div>
-    </div>
-</div>
-<?php endif; ?>
-
-<?php if (count($progresses) > 0): ?>
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Lịch sử tiến độ</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Ngày cập nhật</th>
-                                <th>Nội dung</th>
-                                <th>Trạng thái</th>
-                                <th>Phản hồi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($progresses as $progress): ?>
-                                <tr>
-                                    <td><?php echo date('d/m/Y', strtotime($progress['NgayCapNhat'])); ?></td>
-                                    <td>
-                                        <a href="#" data-bs-toggle="modal" data-bs-target="#progressModal<?php echo $progress['TienDoID']; ?>">
-                                            <?php echo htmlspecialchars(substr($progress['NoiDung'], 0, 100)) . (strlen($progress['NoiDung']) > 100 ? '...' : ''); ?>
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <?php if ($progress['TrangThai'] == 'Đã duyệt'): ?>
-                                            <span class="badge bg-success">Đã duyệt</span>
-                                        <?php elseif ($progress['TrangThai'] == 'Từ chối'): ?>
-                                            <span class="badge bg-danger">Từ chối</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-warning">Chờ duyệt</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <?php if (!empty($progress['PhanHoi'])): ?>
-                                            <a href="#" data-bs-toggle="modal" data-bs-target="#feedbackModal<?php echo $progress['TienDoID']; ?>">
-                                                <i class="fas fa-comment-dots"></i> Xem phản hồi
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="text-muted">Chưa có phản hồi</span>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                                
-                                <!-- Modal for viewing progress details -->
-                                <div class="modal fade" id="progressModal<?php echo $progress['TienDoID']; ?>" tabindex="-1" aria-labelledby="progressModalLabel<?php echo $progress['TienDoID']; ?>" aria-hidden="true">
-                                    <div class="modal-dialog modal-lg">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="progressModalLabel<?php echo $progress['TienDoID']; ?>">
-                                                    Chi tiết tiến độ
-                                                </h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="mb-3">
-                                                    <h6>Ngày cập nhật:</h6>
-                                                    <p><?php echo date('d/m/Y H:i', strtotime($progress['NgayCapNhat'])); ?></p>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <h6>Nội dung:</h6>
-                                                    <p><?php echo nl2br(htmlspecialchars($progress['NoiDung'])); ?></p>
-                                                </div>
-                                                <?php if (!empty($progress['FileDinhKem'])): ?>
-                                                    <div class="mb-3">
-                                                        <h6>File đính kèm:</h6>
-                                                        <p><a href="../uploads/progress/<?php echo $progress['FileDinhKem']; ?>" target="_blank"><i class="fas fa-file"></i> <?php echo $progress['FileDinhKem']; ?></a></p>
-                                                    </div>
-                                                <?php endif; ?>
-                                                <?php if (!empty($progress['PhanHoi'])): ?>
-                                                    <div class="mb-3">
-                                                        <h6>Phản hồi từ giảng viên:</h6>
-                                                        <p><?php echo nl2br(htmlspecialchars($progress['PhanHoi'])); ?></p>
-                                                    </div>
-                                                <?php endif; ?>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Modal for viewing feedback -->
-                                <?php if (!empty($progress['PhanHoi'])): ?>
-                                    <div class="modal fade" id="feedbackModal<?php echo $progress['TienDoID']; ?>" tabindex="-1" aria-labelledby="feedbackModalLabel<?php echo $progress['TienDoID']; ?>" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title" id="feedbackModalLabel<?php echo $progress['TienDoID']; ?>">
-                                                        Phản hồi từ giảng viên
-                                                    </h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p><?php echo nl2br(htmlspecialchars($progress['PhanHoi'])); ?></p>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<?php elseif ($assignment): ?>
-<div class="row">
-    <div class="col-md-12">
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>Bạn chưa có cập nhật tiến độ nào. <a href="../student/add-progress.php" class="alert-link">Cập nhật tiến độ ngay</a>.
         </div>
     </div>
 </div>

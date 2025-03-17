@@ -30,7 +30,7 @@ $assignmentId = $_GET['id'];
 
 // Kiểm tra xem bài tập có tồn tại và thuộc về sinh viên này không
 $stmt = $conn->prepare("
-    SELECT btsv.BaiTapSinhVienID, btsv.DaDoc
+    SELECT btsv.DaDoc, btsv.NgayDoc
     FROM BaiTapSinhVien btsv
     WHERE btsv.BaiTapID = :assignmentId AND btsv.SinhVienID = :studentId
 ");
@@ -48,8 +48,8 @@ $assignmentStatus = $stmt->fetch(PDO::FETCH_ASSOC);
 // Đánh dấu bài tập đã đọc nếu chưa đọc
 if (!$assignmentStatus['DaDoc']) {
     $stmt = $conn->prepare("
-        UPDATE BaiTapSinhVien
-        SET DaDoc = 1, NgayDoc = NOW()
+        UPDATE BaiTapSinhVien 
+        SET DaDoc = 1, NgayDoc = NOW() 
         WHERE BaiTapID = :assignmentId AND SinhVienID = :studentId
     ");
     $stmt->bindParam(':assignmentId', $assignmentId);

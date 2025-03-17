@@ -15,12 +15,21 @@ $facultyId = $facultyDetails['GiangVienID'];
 // Get students assigned to this faculty
 $conn = getDBConnection();
 $stmt = $conn->prepare("
-    SELECT sv.*, svgv.ID as AssignmentID, svgv.NgayBatDau, svgv.TrangThai as AssignmentStatus, dt.TenDeTai
-    FROM SinhVienGiangVienHuongDan svgv
-    JOIN SinhVien sv ON svgv.SinhVienID = sv.SinhVienID
-    LEFT JOIN DeTai dt ON svgv.DeTaiID = dt.DeTaiID
-    WHERE svgv.GiangVienID = :facultyId
-    ORDER BY svgv.TrangThai ASC, svgv.NgayBatDau DESC
+    SELECT sv.*, latest_assignment.ID as AssignmentID, latest_assignment.NgayBatDau, 
+           latest_assignment.TrangThai as AssignmentStatus, dt.TenDeTai
+    FROM SinhVien sv
+    JOIN (
+        SELECT svgv1.*
+        FROM SinhVienGiangVienHuongDan svgv1
+        LEFT JOIN SinhVienGiangVienHuongDan svgv2 ON 
+            svgv1.SinhVienID = svgv2.SinhVienID AND 
+            svgv1.NgayBatDau < svgv2.NgayBatDau
+        WHERE svgv1.GiangVienID = :facultyId
+        AND svgv1.TrangThai IN ('Đang hướng dẫn', 'Đã hoàn thành')
+        AND svgv2.ID IS NULL
+    ) latest_assignment ON sv.SinhVienID = latest_assignment.SinhVienID
+    LEFT JOIN DeTai dt ON latest_assignment.DeTaiID = dt.DeTaiID
+    ORDER BY latest_assignment.TrangThai ASC, latest_assignment.NgayBatDau DESC
 ");
 $stmt->bindParam(':facultyId', $facultyId);
 $stmt->execute();
@@ -91,7 +100,7 @@ include '../includes/header.php';
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <a href="student-detail.php?id=<?php echo $student['AssignmentID']; ?>" class="btn btn-sm btn-info">
+                                            <a href="view-student.php?id=<?php echo $student['SinhVienID']; ?>" class="btn btn-sm btn-info">
                                                 <i class="fas fa-eye"></i> Chi tiết
                                             </a>
                                             <a href="progress.php?student_id=<?php echo $student['SinhVienID']; ?>" class="btn btn-sm btn-primary">

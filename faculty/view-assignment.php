@@ -254,13 +254,13 @@ include '../includes/header.php';
                                                         data-bs-toggle="modal" 
                                                         data-bs-target="#viewSubmissionModal"
                                                         data-id="<?php echo $student['NopBaiTapID']; ?>"
-                                                        data-student="<?php echo htmlspecialchars($student['HoTen']); ?>"
-                                                        data-file="<?php echo $student['FileNop']; ?>"
-                                                        data-notes="<?php echo htmlspecialchars($student['GhiChu']); ?>"
-                                                        data-date="<?php echo date('d/m/Y H:i', strtotime($student['NgayNop'])); ?>"
-                                                        data-score="<?php echo $student['DiemSo']; ?>"
-                                                        data-feedback="<?php echo htmlspecialchars($student['NhanXet']); ?>"
-                                                        data-status="<?php echo $student['TrangThai']; ?>">
+                                                        data-student="<?php echo htmlspecialchars($student['HoTen'] ?? ''); ?>"
+                                                        data-file="<?php echo $student['FileNop'] ?? ''; ?>"
+                                                        data-notes="<?php echo htmlspecialchars($student['GhiChu'] ?? ''); ?>"
+                                                        data-date="<?php echo date('d/m/Y H:i', strtotime($student['NgayNop'] ?? 'now')); ?>"
+                                                        data-score="<?php echo $student['DiemSo'] ?? ''; ?>"
+                                                        data-feedback="<?php echo htmlspecialchars($student['NhanXet'] ?? ''); ?>"
+                                                        data-status="<?php echo $student['TrangThai'] ?? ''; ?>">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
                                             <?php else: ?>

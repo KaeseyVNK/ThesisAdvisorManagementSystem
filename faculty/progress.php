@@ -166,6 +166,7 @@ include '../includes/header.php';
                                                 <option value="Đang thực hiện" <?php echo $filters['status'] == 'Đang thực hiện' ? 'selected' : ''; ?>>Đang thực hiện</option>
                                                 <option value="Đã hoàn thành" <?php echo $filters['status'] == 'Đã hoàn thành' ? 'selected' : ''; ?>>Đã hoàn thành</option>
                                                 <option value="Cần chỉnh sửa" <?php echo $filters['status'] == 'Cần chỉnh sửa' ? 'selected' : ''; ?>>Cần chỉnh sửa</option>
+                                                <option value="Chờ duyệt" <?php echo $filters['status'] == 'Chờ duyệt' ? 'selected' : ''; ?>>Chờ duyệt</option>
                                             </select>
                                         </div>
                                         <div class="col-md-2">
@@ -220,7 +221,11 @@ include '../includes/header.php';
                                         <td><?php echo htmlspecialchars($item['TenDeTai'] ?? 'Chưa có đề tài'); ?></td>
                                         <td><?php echo mb_substr(htmlspecialchars($item['NoiDung']), 0, 50) . (mb_strlen($item['NoiDung']) > 50 ? '...' : ''); ?></td>
                                         <td>
-                                            <span class="badge bg-<?php echo $item['TrangThai'] == 'Đã hoàn thành' ? 'success' : ($item['TrangThai'] == 'Đang thực hiện' ? 'primary' : 'warning'); ?>">
+                                            <span class="badge bg-<?php 
+                                                echo $item['TrangThai'] == 'Đã hoàn thành' ? 'success' : 
+                                                    ($item['TrangThai'] == 'Đang thực hiện' ? 'primary' : 
+                                                    ($item['TrangThai'] == 'Cần chỉnh sửa' ? 'warning' : 'secondary')); 
+                                            ?>">
                                                 <?php echo $item['TrangThai']; ?>
                                             </span>
                                         </td>

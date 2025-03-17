@@ -146,24 +146,8 @@ include 'includes/header.php';
                             <i class="fas fa-arrow-right ms-2"></i>
                         </button>
                         
-                        <div class="text-center mb-4">
-                            <p class="mb-0">Chưa có tài khoản? <a href="register.php" class="register-link">Đăng ký ngay</a></p>
-                        </div>
+                        
                     </form>
-                    
-                    <div class="divider-text"><span>hoặc đăng nhập với</span></div>
-                    
-                    <div class="social-login-buttons">
-                        <button class="btn social-btn google-btn">
-                            <i class="fab fa-google"></i>
-                        </button>
-                        <button class="btn social-btn facebook-btn">
-                            <i class="fab fa-facebook-f"></i>
-                        </button>
-                        <button class="btn social-btn github-btn">
-                            <i class="fab fa-github"></i>
-                        </button>
-                    </div>
                     
                     <div class="back-home text-center mt-4">
                         <a href="index.php" class="back-link">

@@ -71,8 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if ($allStudents) {
                 // Get all students supervised by this faculty
                 $stmt = $conn->prepare("
-                    SELECT SinhVienID FROM SinhVien 
-                    WHERE GiangVienID = :facultyId
+                    SELECT DISTINCT sv.SinhVienID 
+                    FROM SinhVien sv
+                    JOIN SinhVienGiangVienHuongDan svgv ON sv.SinhVienID = svgv.SinhVienID
+                    WHERE svgv.GiangVienID = :facultyId AND svgv.TrangThai = 'Đang hướng dẫn'
                 ");
                 $stmt->bindParam(':facultyId', $facultyId);
                 $stmt->execute();
@@ -173,10 +175,11 @@ $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Lấy danh sách sinh viên
 $stmt = $conn->prepare("
-    SELECT SinhVienID, MaSV, HoTen 
-    FROM SinhVien 
-    WHERE GiangVienID = :facultyId
-    ORDER BY HoTen
+    SELECT DISTINCT sv.SinhVienID, sv.MaSV, sv.HoTen 
+    FROM SinhVien sv
+    JOIN SinhVienGiangVienHuongDan svgv ON sv.SinhVienID = svgv.SinhVienID
+    WHERE svgv.GiangVienID = :facultyId AND svgv.TrangThai = 'Đang hướng dẫn'
+    ORDER BY sv.HoTen
 ");
 $stmt->bindParam(':facultyId', $facultyId);
 $stmt->execute();

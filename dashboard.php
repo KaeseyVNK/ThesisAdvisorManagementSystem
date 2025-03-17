@@ -482,14 +482,14 @@ include 'includes/header.php';
                         <h5 class="card-title mb-0">
                             <i class="fas fa-user-graduate me-2 text-primary"></i>Sinh viên hướng dẫn
                         </h5>
-                        <a href="faculty/assignments.php" class="btn btn-sm btn-primary">
+                        <a href="faculty/students.php" class="btn btn-sm btn-primary">
                             <i class="fas fa-arrow-right me-1"></i>Truy cập
                         </a>
                     </div>
                     <div class="card-body">
                         <p class="card-text">Xem danh sách sinh viên bạn đang hướng dẫn và theo dõi tiến độ của họ.</p>
                         <div class="d-grid gap-2">
-                            <a href="faculty/assignments.php" class="btn btn-outline-primary">
+                            <a href="faculty/students.php" class="btn btn-outline-primary">
                                 <i class="fas fa-users me-1"></i>Xem sinh viên
                             </a>
                         </div>

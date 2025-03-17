@@ -275,10 +275,10 @@ $isSubmitted = !empty($submission);
                     </div>
                     <?php endif; ?>
                     
-                    <?php if (isset($submission['Diem'])): ?>
+                    <?php if (isset($submission['DiemSo'])): ?>
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <span>Điểm:</span>
-                        <span class="fw-bold"><?php echo $submission['Diem']; ?>/10</span>
+                        <span class="fw-bold"><?php echo $submission['DiemSo']; ?>/10</span>
                     </div>
                     <?php endif; ?>
                     

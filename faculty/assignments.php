@@ -173,11 +173,10 @@ $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Lấy danh sách sinh viên
 $stmt = $conn->prepare("
-    SELECT sv.SinhVienID, sv.MaSV, sv.HoTen 
-    FROM SinhVien sv
-    JOIN SinhVienGiangVienHuongDan svgv ON sv.SinhVienID = svgv.SinhVienID
-    WHERE svgv.GiangVienID = :facultyId AND svgv.TrangThai = 'Đang hướng dẫn'
-    ORDER BY sv.HoTen
+    SELECT SinhVienID, MaSV, HoTen 
+    FROM SinhVien 
+    WHERE GiangVienID = :facultyId
+    ORDER BY HoTen
 ");
 $stmt->bindParam(':facultyId', $facultyId);
 $stmt->execute();

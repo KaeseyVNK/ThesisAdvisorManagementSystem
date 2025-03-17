@@ -55,7 +55,7 @@ $stmt = $conn->prepare("
         bt.BaiTapID, bt.TieuDe, bt.MoTa, bt.FileDinhKem, bt.HanNop, bt.NgayTao,
         gv.HoTen as TenGiangVien,
         btsv.DaDoc, btsv.NgayDoc,
-        nb.NopBaiTapID, nb.FileNop, nb.NgayNop, nb.Diem, nb.TrangThai
+        nb.NopBaiTapID, nb.FileNop, nb.NgayNop, nb.DiemSo, nb.TrangThai
     FROM BaiTapSinhVien btsv
     JOIN BaiTap bt ON btsv.BaiTapID = bt.BaiTapID
     JOIN GiangVien gv ON bt.GiangVienID = gv.GiangVienID
@@ -179,8 +179,8 @@ include '../includes/header.php';
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <?php if (isset($assignment['Diem'])): ?>
-                                            <span class="fw-bold"><?php echo $assignment['Diem']; ?>/10</span>
+                                        <?php if (isset($assignment['DiemSo'])): ?>
+                                            <span class="fw-bold"><?php echo $assignment['DiemSo']; ?>/10</span>
                                         <?php else: ?>
                                             <span class="text-muted">-</span>
                                         <?php endif; ?>

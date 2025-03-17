@@ -31,6 +31,36 @@ if (isAdmin()) {
     // Get total assignments
     $stmt = $conn->query("SELECT COUNT(*) as total FROM SinhVienGiangVienHuongDan");
     $stats['assignments'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Get pending student proposals
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM DeTaiSinhVienDeXuat WHERE TrangThai = 'Chờ duyệt'");
+    $stats['pending_proposals'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Get recent student proposals
+    $stmt = $conn->prepare("
+        SELECT dx.*, sv.HoTen as TenSinhVien, sv.MaSV, gv.HoTen as TenGiangVien
+        FROM DeTaiSinhVienDeXuat dx
+        JOIN SinhVien sv ON dx.SinhVienID = sv.SinhVienID
+        LEFT JOIN GiangVien gv ON dx.GiangVienID = gv.GiangVienID
+        WHERE dx.TrangThai = 'Chờ duyệt'
+        ORDER BY dx.NgayDeXuat DESC
+        LIMIT 5
+    ");
+    $stmt->execute();
+    $stats['recent_proposals'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get unread notifications for admin
+    try {
+        // Thử đếm từ bảng ThongBaoAdmin
+        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM ThongBaoAdmin WHERE AdminID = 1 AND DaDoc = 0");
+        $stmt->execute();
+        $stats['unread_notifications'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+    } catch (PDOException $e) {
+        // Nếu bảng không tồn tại, đếm từ ThongBaoSinhVien với ID 1 (admin)
+        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM ThongBaoSinhVien WHERE SinhVienID = 1 AND DaDoc = 0");
+        $stmt->execute();
+        $stats['unread_notifications'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+    }
 } elseif (isFaculty()) {
     // Kiểm tra nếu không tìm thấy thông tin giảng viên
     if (!$userDetails) {
@@ -65,6 +95,25 @@ if (isAdmin()) {
         $stmt->bindParam(':facultyId', $facultyId);
         $stmt->execute();
         $stats['completed'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+        
+        // Get pending student proposals
+        $stmt = $conn->prepare("SELECT COUNT(*) as total FROM DeTaiSinhVienDeXuat WHERE GiangVienID = :facultyId AND TrangThai = 'Chờ duyệt'");
+        $stmt->bindParam(':facultyId', $facultyId);
+        $stmt->execute();
+        $stats['pending_proposals'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+        
+        // Get recent student proposals
+        $stmt = $conn->prepare("
+            SELECT dx.*, sv.HoTen as TenSinhVien, sv.MaSV
+            FROM DeTaiSinhVienDeXuat dx
+            JOIN SinhVien sv ON dx.SinhVienID = sv.SinhVienID
+            WHERE dx.GiangVienID = :facultyId AND dx.TrangThai = 'Chờ duyệt'
+            ORDER BY dx.NgayDeXuat DESC
+            LIMIT 5
+        ");
+        $stmt->bindParam(':facultyId', $facultyId);
+        $stmt->execute();
+        $stats['recent_proposals'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } elseif (isStudent()) {
     // Kiểm tra nếu không tìm thấy thông tin sinh viên
@@ -250,6 +299,65 @@ include 'includes/header.php';
                     </div>
                 </div>
             </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-lightbulb me-2 text-warning"></i>Đề xuất đề tài từ sinh viên
+                            <?php if ($stats['pending_proposals'] > 0): ?>
+                                <span class="badge bg-danger ms-2"><?php echo $stats['pending_proposals']; ?></span>
+                            <?php endif; ?>
+                            <?php if (isset($stats['unread_notifications']) && $stats['unread_notifications'] > 0): ?>
+                                <span class="badge bg-danger ms-2" title="Thông báo chưa đọc"><?php echo $stats['unread_notifications']; ?></span>
+                            <?php endif; ?>
+                        </h5>
+                        <a href="admin/student-proposals.php" class="btn btn-sm btn-warning">
+                            <i class="fas fa-arrow-right me-1"></i>Truy cập
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <?php if (count($stats['recent_proposals']) > 0): ?>
+                            <div class="list-group proposal-list">
+                                <?php foreach ($stats['recent_proposals'] as $proposal): ?>
+                                    <div class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1"><?php echo htmlspecialchars($proposal['TenDeTai']); ?></h6>
+                                            <small><?php echo date('d/m/Y', strtotime($proposal['NgayDeXuat'])); ?></small>
+                                        </div>
+                                        <p class="mb-1 text-truncate"><?php echo htmlspecialchars(substr($proposal['MoTa'], 0, 100)); ?>...</p>
+                                        <small>Sinh viên: <?php echo htmlspecialchars($proposal['TenSinhVien']); ?> (<?php echo htmlspecialchars($proposal['MaSV']); ?>)</small>
+                                        <?php if (!empty($proposal['TenGiangVien'])): ?>
+                                            <br>
+                                            <small>Giảng viên: <?php echo htmlspecialchars($proposal['TenGiangVien']); ?></small>
+                                        <?php endif; ?>
+                                        <div class="mt-2">
+                                            <?php if (empty($proposal['GiangVienID'])): ?>
+                                                <a href="admin/assign-faculty.php?id=<?php echo $proposal['DeXuatID']; ?>" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-user-plus me-1"></i>Phân công GV
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="admin/assign-faculty.php?id=<?php echo $proposal['DeXuatID']; ?>" class="btn btn-sm btn-info">
+                                                    <i class="fas fa-edit me-1"></i>Đổi GV
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php if ($stats['pending_proposals'] > 5): ?>
+                                <div class="mt-3 text-center">
+                                    <a href="admin/student-proposals.php" class="btn btn-sm btn-outline-warning">
+                                        Xem tất cả <?php echo $stats['pending_proposals']; ?> đề xuất
+                                    </a>
+                                </div>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <p class="card-text">Không có đề xuất đề tài nào từ sinh viên cần phân công.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
 
             <div class="col-md-6 mb-4">
                 <div class="card h-100">
@@ -306,8 +414,11 @@ include 'includes/header.php';
                     <div class="card-body">
                         <p class="card-text">Phân công giảng viên hướng dẫn đề tài. Quản lý việc phân công giảng viên cho từng đề tài.</p>
                         <div class="d-grid gap-2">
-                            <a href="admin/assignments.php" class="btn btn-outline-primary">
-                                <i class="fas fa-plus me-1"></i>Tạo phân công mới
+                            <a href="admin/assignments.php" class="btn btn-outline-primary mb-2">
+                                <i class="fas fa-plus me-1"></i>Phân công giảng viên - đề tài
+                            </a>
+                            <a href="admin/student-assignments.php" class="btn btn-outline-primary">
+                                <i class="fas fa-plus me-1"></i>Phân công sinh viên - giảng viên
                             </a>
                         </div>
                     </div>
@@ -317,25 +428,6 @@ include 'includes/header.php';
 
     <?php elseif (isFaculty()): ?>
         <!-- Faculty Dashboard -->
-        <?php if (!$userDetails): ?>
-        <div class="col-md-12 mb-4">
-            <div class="card">
-                <div class="card-body">
-                    <div class="alert alert-danger mb-0">
-                        <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Tài khoản chưa được thiết lập đầy đủ</h5>
-                        <p>Tài khoản của bạn chưa được liên kết với thông tin giảng viên trong hệ thống. Vui lòng liên hệ quản trị viên để được hỗ trợ.</p>
-                        <hr>
-                        <p class="mb-0">Để quản trị viên cần thông tin sau để hỗ trợ:</p>
-                        <ul>
-                            <li>Tên đăng nhập: <strong><?php echo $_SESSION['username']; ?></strong></li>
-                            <li>ID Người dùng: <strong><?php echo $_SESSION['user_id']; ?></strong></li>
-                            <li>Email: <strong><?php echo isset($_SESSION['email']) ? $_SESSION['email'] : 'Chưa cung cấp'; ?></strong></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php else: ?>
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="card overview-card overview-students">
@@ -343,7 +435,7 @@ include 'includes/header.php';
                         <div class="overview-icon">
                             <i class="fas fa-user-graduate"></i>
                         </div>
-                        <h6 class="overview-title">Sinh viên hướng dẫn</h6>
+                        <h6 class="overview-title">Sinh viên</h6>
                         <h2 class="overview-value"><?php echo $stats['students']; ?></h2>
                     </div>
                 </div>
@@ -360,7 +452,7 @@ include 'includes/header.php';
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card overview-card overview-lecturers">
+                <div class="card overview-card overview-active">
                     <div class="card-body">
                         <div class="overview-icon">
                             <i class="fas fa-spinner"></i>
@@ -371,7 +463,7 @@ include 'includes/header.php';
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card overview-card overview-assignments">
+                <div class="card overview-card overview-completed">
                     <div class="card-body">
                         <div class="overview-icon">
                             <i class="fas fa-check-circle"></i>
@@ -390,12 +482,62 @@ include 'includes/header.php';
                         <h5 class="card-title mb-0">
                             <i class="fas fa-user-graduate me-2 text-primary"></i>Sinh viên hướng dẫn
                         </h5>
-                        <a href="faculty/students.php" class="btn btn-sm btn-primary">
+                        <a href="faculty/assignments.php" class="btn btn-sm btn-primary">
                             <i class="fas fa-arrow-right me-1"></i>Truy cập
                         </a>
                     </div>
                     <div class="card-body">
-                        <p class="card-text">Xem danh sách sinh viên đang được hướng dẫn. Theo dõi tiến độ và cung cấp phản hồi.</p>
+                        <p class="card-text">Xem danh sách sinh viên bạn đang hướng dẫn và theo dõi tiến độ của họ.</p>
+                        <div class="d-grid gap-2">
+                            <a href="faculty/assignments.php" class="btn btn-outline-primary">
+                                <i class="fas fa-users me-1"></i>Xem sinh viên
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-lightbulb me-2 text-warning"></i>Đề xuất đề tài từ sinh viên
+                            <?php if (isset($stats['pending_proposals']) && $stats['pending_proposals'] > 0): ?>
+                                <span class="badge bg-danger ms-2"><?php echo $stats['pending_proposals']; ?></span>
+                            <?php endif; ?>
+                        </h5>
+                        <a href="faculty/view-student-proposals.php" class="btn btn-sm btn-warning">
+                            <i class="fas fa-arrow-right me-1"></i>Truy cập
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <?php if (isset($stats['recent_proposals']) && count($stats['recent_proposals']) > 0): ?>
+                            <div class="list-group proposal-list">
+                                <?php foreach ($stats['recent_proposals'] as $proposal): ?>
+                                    <div class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1"><?php echo htmlspecialchars($proposal['TenDeTai']); ?></h6>
+                                            <small><?php echo date('d/m/Y', strtotime($proposal['NgayDeXuat'])); ?></small>
+                                        </div>
+                                        <p class="mb-1 text-truncate"><?php echo htmlspecialchars(substr($proposal['MoTa'], 0, 100)); ?>...</p>
+                                        <small>Sinh viên: <?php echo htmlspecialchars($proposal['TenSinhVien']); ?> (<?php echo htmlspecialchars($proposal['MaSV']); ?>)</small>
+                                        <?php if (!empty($proposal['TenGiangVien'])): ?>
+                                            <br>
+                                            <small>Giảng viên: <?php echo htmlspecialchars($proposal['TenGiangVien']); ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php if (isset($stats['pending_proposals']) && $stats['pending_proposals'] > 5): ?>
+                                <div class="mt-3 text-center">
+                                    <a href="faculty/view-student-proposals.php" class="btn btn-sm btn-outline-warning">
+                                        Xem tất cả <?php echo $stats['pending_proposals']; ?> đề xuất
+                                    </a>
+                                </div>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <p class="card-text">Không có đề xuất đề tài nào từ sinh viên cần duyệt.</p>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -404,14 +546,19 @@ include 'includes/header.php';
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">
-                            <i class="fas fa-book me-2 text-primary"></i>Đề tài
+                            <i class="fas fa-book me-2 text-primary"></i>Quản lý đề tài
                         </h5>
                         <a href="faculty/theses.php" class="btn btn-sm btn-primary">
                             <i class="fas fa-arrow-right me-1"></i>Truy cập
                         </a>
                     </div>
                     <div class="card-body">
-                        <p class="card-text">Quản lý đề tài đang hướng dẫn. Xem thông tin chi tiết và danh sách sinh viên thực hiện.</p>
+                        <p class="card-text">Quản lý đề tài đang hướng dẫn. Xem thông tin chi tiết và danh sách sinh viên thực hiện từng đề tài.</p>
+                        <div class="d-grid gap-2">
+                            <a href="faculty/theses.php" class="btn btn-outline-primary">
+                                <i class="fas fa-list me-1"></i>Xem đề tài
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -420,19 +567,132 @@ include 'includes/header.php';
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">
-                            <i class="fas fa-tasks me-2 text-primary"></i>Phân công
+                            <i class="fas fa-clipboard-list me-2 text-primary"></i>Bài tập
                         </h5>
                         <a href="faculty/assignments.php" class="btn btn-sm btn-primary">
                             <i class="fas fa-arrow-right me-1"></i>Truy cập
                         </a>
                     </div>
                     <div class="card-body">
-                        <p class="card-text">Phân công sinh viên vào đề tài. Quản lý việc phân công sinh viên cho từng đề tài được hướng dẫn.</p>
+                        <p class="card-text">Quản lý bài tập giao cho sinh viên. Tạo bài tập mới, theo dõi tiến độ và chấm điểm bài nộp.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-bell me-2 text-primary"></i>Thông báo
+                        </h5>
+                        <a href="faculty/notifications.php" class="btn btn-sm btn-primary">
+                            <i class="fas fa-arrow-right me-1"></i>Truy cập
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">Quản lý thông báo gửi cho sinh viên. Tạo thông báo mới và theo dõi trạng thái đọc của sinh viên.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-line me-2 text-primary"></i>Tiến độ
+                        </h5>
+                        <a href="faculty/progress.php" class="btn btn-sm btn-primary">
+                            <i class="fas fa-arrow-right me-1"></i>Truy cập
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">Theo dõi tiến độ của sinh viên. Xem và đánh giá các báo cáo tiến độ từ sinh viên.</p>
                     </div>
                 </div>
             </div>
         </div>
-        <?php endif; ?>
+
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tasks me-2 text-primary"></i>Tiến độ mới nhất
+                    </h5>
+                    <a href="faculty/progress.php" class="btn btn-sm btn-primary">
+                        <i class="fas fa-list me-1"></i>Xem tất cả
+                    </a>
+                </div>
+                <div class="card-body">
+                    <?php
+                    // Lấy 5 tiến độ mới nhất từ sinh viên
+                    $stmt = $conn->prepare("
+                        SELECT 
+                            td.TienDoID, td.NoiDung, td.TrangThai, td.NgayCapNhat,
+                            sv.SinhVienID, sv.HoTen as TenSinhVien, sv.MaSV,
+                            dt.TenDeTai
+                        FROM TienDo td
+                        JOIN SinhVienGiangVienHuongDan svgv ON td.SinhVienGiangVienID = svgv.ID
+                        JOIN SinhVien sv ON svgv.SinhVienID = sv.SinhVienID
+                        LEFT JOIN DeTai dt ON svgv.DeTaiID = dt.DeTaiID
+                        WHERE svgv.GiangVienID = :facultyId
+                        ORDER BY td.NgayCapNhat DESC
+                        LIMIT 5
+                    ");
+                    $stmt->bindParam(':facultyId', $facultyId);
+                    $stmt->execute();
+                    $progressItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    ?>
+                    
+                    <?php if (count($progressItems) > 0): ?>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Sinh viên</th>
+                                        <th>Đề tài</th>
+                                        <th>Nội dung</th>
+                                        <th>Trạng thái</th>
+                                        <th>Ngày tạo</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($progressItems as $item): ?>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div>
+                                                    <div class="fw-bold"><?php echo htmlspecialchars($item['TenSinhVien']); ?></div>
+                                                    <small class="text-muted"><?php echo htmlspecialchars($item['MaSV']); ?></small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($item['TenDeTai'] ?? 'Chưa có đề tài'); ?></td>
+                                        <td><?php echo mb_substr(htmlspecialchars($item['NoiDung']), 0, 50) . (mb_strlen($item['NoiDung']) > 50 ? '...' : ''); ?></td>
+                                        <td>
+                                            <span class="badge bg-<?php echo $item['TrangThai'] == 'Đã hoàn thành' ? 'success' : ($item['TrangThai'] == 'Đang thực hiện' ? 'primary' : 'warning'); ?>">
+                                                <?php echo $item['TrangThai']; ?>
+                                            </span>
+                                        </td>
+                                        <td><?php echo date('d/m/Y H:i', strtotime($item['NgayCapNhat'])); ?></td>
+                                        <td>
+                                            <a href="faculty/view-progress.php?id=<?php echo $item['TienDoID']; ?>" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i>Chưa có tiến độ nào được cập nhật.
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
     <?php else: ?>
         <!-- Student Dashboard -->
         <div class="row">

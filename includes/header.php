@@ -65,6 +65,30 @@ require_once __DIR__ . '/functions.php';
                                         <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/admin/assignments.php">
                                             <i class="fas fa-tasks me-2"></i>Phân công
                                         </a></li>
+                                        <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/admin/student-proposals.php">
+                                            <i class="fas fa-lightbulb me-2"></i>Đề xuất từ sinh viên
+                                            <?php 
+                                            if (isLoggedIn() && isAdmin()) {
+                                                $conn = getDBConnection();
+                                                try {
+                                                    // Đếm số đề xuất đề tài chưa được phân công giảng viên
+                                                    $stmt = $conn->prepare("
+                                                        SELECT COUNT(*) as count 
+                                                        FROM DeTaiSinhVienDeXuat 
+                                                        WHERE TrangThai = 'Chờ duyệt'
+                                                    ");
+                                                    $stmt->execute();
+                                                    $unreadCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+                                                    
+                                                    if ($unreadCount > 0) {
+                                                        echo '<span class="badge bg-danger ms-2">' . $unreadCount . '</span>';
+                                                    }
+                                                } catch (PDOException $e) {
+                                                    // Xử lý lỗi nếu có
+                                                }
+                                            }
+                                            ?>
+                                        </a></li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/admin/reports.php">
                                             <i class="fas fa-chart-bar me-2"></i>Báo cáo
@@ -83,8 +107,8 @@ require_once __DIR__ . '/functions.php';
                                         <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/faculty/theses.php">
                                             <i class="fas fa-book me-2"></i>Đề tài
                                         </a></li>
-                                        <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/faculty/assignments.php">
-                                            <i class="fas fa-tasks me-2"></i>Phân công
+                                        <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/faculty/view-student-proposals.php">
+                                            <i class="fas fa-lightbulb me-2"></i>Đề xuất từ sinh viên
                                         </a></li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li><a class="dropdown-item" href="<?php echo APP_URL; ?>/faculty/notifications.php">

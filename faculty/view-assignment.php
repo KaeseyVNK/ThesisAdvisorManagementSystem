@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if ($stmt->rowCount() > 0) {
             $stmt = $conn->prepare("
                 UPDATE NopBaiTap 
-                SET Diem = :score, NhanXet = :feedback, TrangThai = :status
+                SET DiemSo = :score, NhanXet = :feedback, TrangThai = :status
                 WHERE NopBaiTapID = :submissionId
             ");
             $stmt->bindParam(':score', $score);
@@ -92,7 +92,7 @@ $stmt = $conn->prepare("
     SELECT 
         sv.SinhVienID, sv.MaSV, sv.HoTen, sv.Email, 
         btsv.DaDoc, btsv.NgayDoc,
-        nb.NopBaiTapID, nb.FileNop, nb.GhiChu, nb.NgayNop, nb.Diem, nb.NhanXet, nb.TrangThai
+        nb.NopBaiTapID, nb.FileNop, nb.GhiChu, nb.NgayNop, nb.DiemSo, nb.NhanXet, nb.TrangThai
     FROM BaiTapSinhVien btsv
     JOIN SinhVien sv ON btsv.SinhVienID = sv.SinhVienID
     LEFT JOIN NopBaiTap nb ON btsv.BaiTapID = nb.BaiTapID AND btsv.SinhVienID = nb.SinhVienID
@@ -242,8 +242,8 @@ include '../includes/header.php';
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if (isset($student['Diem'])): ?>
-                                                <span class="fw-bold"><?php echo $student['Diem']; ?>/10</span>
+                                            <?php if (isset($student['DiemSo'])): ?>
+                                                <span class="fw-bold"><?php echo $student['DiemSo']; ?>/10</span>
                                             <?php else: ?>
                                                 <span class="text-muted">-</span>
                                             <?php endif; ?>
@@ -258,7 +258,7 @@ include '../includes/header.php';
                                                         data-file="<?php echo $student['FileNop']; ?>"
                                                         data-notes="<?php echo htmlspecialchars($student['GhiChu']); ?>"
                                                         data-date="<?php echo date('d/m/Y H:i', strtotime($student['NgayNop'])); ?>"
-                                                        data-score="<?php echo $student['Diem']; ?>"
+                                                        data-score="<?php echo $student['DiemSo']; ?>"
                                                         data-feedback="<?php echo htmlspecialchars($student['NhanXet']); ?>"
                                                         data-status="<?php echo $student['TrangThai']; ?>">
                                                     <i class="fas fa-eye"></i>

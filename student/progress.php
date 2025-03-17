@@ -19,10 +19,21 @@ if (!$studentDetails) {
 
 $studentId = $studentDetails['SinhVienID'];
 
-// Get assignment details
+// Lấy thông tin trạng thái đề tài của sinh viên
 $conn = getDBConnection();
 $stmt = $conn->prepare("
-    SELECT svgv.*, dt.TenDeTai, gv.HoTen as GiangVienHoTen
+    SELECT sv.*, u.Email as UserEmail
+    FROM SinhVien sv
+    LEFT JOIN Users u ON sv.UserID = u.UserID
+    WHERE sv.SinhVienID = :studentId
+");
+$stmt->bindParam(':studentId', $studentId);
+$stmt->execute();
+$studentStatus = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Get assignment details
+$stmt = $conn->prepare("
+    SELECT svgv.*, dt.TenDeTai, dt.MoTa as MoTaDeTai, dt.LinhVuc, gv.HoTen as GiangVienHoTen, gv.Email as GiangVienEmail
     FROM SinhVienGiangVienHuongDan svgv
     LEFT JOIN DeTai dt ON svgv.DeTaiID = dt.DeTaiID
     LEFT JOIN GiangVien gv ON svgv.GiangVienID = gv.GiangVienID
@@ -32,6 +43,55 @@ $stmt = $conn->prepare("
 $stmt->bindParam(':studentId', $studentId);
 $stmt->execute();
 $assignment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Kiểm tra xem sinh viên có đề xuất đề tài đã được duyệt không
+if (!$assignment) {
+    $stmt = $conn->prepare("
+        SELECT dx.*, gv.HoTen as GiangVienHoTen, gv.Email as GiangVienEmail
+        FROM DeTaiSinhVienDeXuat dx
+        LEFT JOIN GiangVien gv ON dx.GiangVienID = gv.GiangVienID
+        WHERE dx.SinhVienID = :studentId AND dx.TrangThai = 'Đã duyệt'
+        ORDER BY dx.NgayDuyet DESC
+        LIMIT 1
+    ");
+    $stmt->bindParam(':studentId', $studentId);
+    $stmt->execute();
+    $approvedProposal = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Nếu sinh viên có trạng thái "Đã có đề tài" nhưng không tìm thấy thông tin assignment,
+    // thử tìm thông tin đề tài từ bảng DeTai dựa trên đề xuất đã được duyệt
+    if (!$approvedProposal && isset($studentStatus) && $studentStatus['TrangThaiDeTai'] == 'Đã có đề tài') {
+        // Tìm đề tài mới nhất được tạo cho sinh viên này từ bảng SinhVienGiangVienHuongDan
+        $stmt = $conn->prepare("
+            SELECT dt.*, gv.HoTen as GiangVienHoTen, gv.Email as GiangVienEmail
+            FROM DeTai dt
+            LEFT JOIN SinhVienGiangVienHuongDan svgv ON dt.DeTaiID = svgv.DeTaiID
+            LEFT JOIN GiangVien gv ON svgv.GiangVienID = gv.GiangVienID
+            WHERE svgv.SinhVienID = :studentId
+            ORDER BY dt.NgayTao DESC
+            LIMIT 1
+        ");
+        $stmt->bindParam(':studentId', $studentId);
+        $stmt->execute();
+        $approvedThesis = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Nếu không tìm thấy từ SinhVienGiangVienHuongDan, tìm từ DeTaiSinhVienDeXuat đã được duyệt
+        if (!$approvedThesis) {
+            $stmt = $conn->prepare("
+                SELECT dt.*, dx.GiangVienID, gv.HoTen as GiangVienHoTen, gv.Email as GiangVienEmail
+                FROM DeTai dt
+                JOIN DeTaiSinhVienDeXuat dx ON dt.TenDeTai = dx.TenDeTai AND dt.MoTa = dx.MoTa
+                LEFT JOIN GiangVien gv ON dx.GiangVienID = gv.GiangVienID
+                WHERE dx.SinhVienID = :studentId AND dx.TrangThai = 'Đã duyệt'
+                ORDER BY dt.NgayTao DESC
+                LIMIT 1
+            ");
+            $stmt->bindParam(':studentId', $studentId);
+            $stmt->execute();
+            $approvedThesis = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+    }
+}
 
 // Get progress records
 $progresses = [];
@@ -61,20 +121,11 @@ include '../includes/header.php';
             </ol>
         </nav>
         <div class="card">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="card-title">
-                        <i class="fas fa-tasks me-2"></i>Tiến độ luận văn
-                    </h2>
-                    <p class="card-text">Theo dõi tiến độ thực hiện luận văn của bạn.</p>
-                </div>
-                <?php if ($assignment): ?>
-                <div>
-                    <a href="add-progress.php" class="btn btn-primary">
-                        <i class="fas fa-plus me-1"></i>Cập nhật tiến độ
-                    </a>
-                </div>
-                <?php endif; ?>
+            <div class="card-body">
+                <h2 class="card-title">
+                    <i class="fas fa-tasks me-2"></i>Tiến độ luận văn
+                </h2>
+                <p class="card-text">Theo dõi tiến độ thực hiện luận văn của bạn.</p>
             </div>
         </div>
     </div>
@@ -90,18 +141,155 @@ include '../includes/header.php';
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <p><strong>Đề tài:</strong> <?php echo $assignment['DeTaiID'] ? $assignment['TenDeTai'] : 'Chưa có đề tài'; ?></p>
-                        <p><strong>Giảng viên hướng dẫn:</strong> <?php echo $assignment['GiangVienHoTen']; ?></p>
+                        <p><strong>Đề tài:</strong> 
+                            <?php 
+                            if (!empty($assignment['TenDeTai'])) {
+                                echo htmlspecialchars($assignment['TenDeTai']);
+                            } elseif (isset($approvedProposal) && !empty($approvedProposal['TenDeTai'])) {
+                                echo htmlspecialchars($approvedProposal['TenDeTai']);
+                            } elseif (isset($approvedThesis) && !empty($approvedThesis['TenDeTai'])) {
+                                echo htmlspecialchars($approvedThesis['TenDeTai']);
+                            } elseif (isset($studentStatus) && $studentStatus['TrangThaiDeTai'] == 'Đã có đề tài') {
+                                echo '<span class="text-success">Đã có đề tài (đang cập nhật thông tin)</span>';
+                            } else {
+                                echo 'Chưa có đề tài';
+                            }
+                            ?>
+                        </p>
+                        <p><strong>Giảng viên hướng dẫn:</strong> <?php echo htmlspecialchars($assignment['GiangVienHoTen'] ?? ''); ?></p>
+                        <p><strong>Email giảng viên:</strong> <?php echo htmlspecialchars($assignment['GiangVienEmail'] ?? ''); ?></p>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Ngày bắt đầu:</strong> <?php echo date('d/m/Y', strtotime($assignment['NgayBatDau'])); ?></p>
-                        <p><strong>Trạng thái:</strong> <span class="badge bg-primary"><?php echo $assignment['TrangThai']; ?></span></p>
+                        <p><strong>Lĩnh vực:</strong> <?php echo htmlspecialchars($assignment['LinhVuc'] ?? ''); ?></p>
+                        <p><strong>Ngày bắt đầu:</strong> <?php echo !empty($assignment['NgayBatDau']) ? date('d/m/Y', strtotime($assignment['NgayBatDau'])) : 'Chưa xác định'; ?></p>
+                        <p><strong>Trạng thái:</strong> <span class="badge bg-primary"><?php echo $assignment['TrangThai'] ?? 'Chưa xác định'; ?></span></p>
+                    </div>
+                </div>
+                <?php if (!empty($assignment['MoTaDeTai'])): ?>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <p><strong>Mô tả đề tài:</strong></p>
+                        <p><?php echo nl2br(htmlspecialchars($assignment['MoTaDeTai'] ?? '')); ?></p>
+                    </div>
+                </div>
+                <?php endif; ?>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <a href="../student/add-progress.php" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Cập nhật tiến độ mới
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+<?php elseif (isset($approvedProposal) && $approvedProposal): ?>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Thông tin đề tài đã được duyệt</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>Đề xuất đề tài của bạn đã được duyệt. Hệ thống đang cập nhật thông tin, vui lòng chờ trong giây lát.
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Đề tài:</strong> <?php echo htmlspecialchars($approvedProposal['TenDeTai'] ?? ''); ?></p>
+                        <p><strong>Giảng viên hướng dẫn:</strong> <?php echo htmlspecialchars($approvedProposal['GiangVienHoTen'] ?? ''); ?></p>
+                        <p><strong>Ngày duyệt:</strong> <?php echo !empty($approvedProposal['NgayDuyet']) ? date('d/m/Y', strtotime($approvedProposal['NgayDuyet'])) : 'Chưa xác định'; ?></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Lĩnh vực:</strong> <?php echo htmlspecialchars($approvedProposal['LinhVuc'] ?? ''); ?></p>
+                        <p><strong>Trạng thái:</strong> <span class="badge bg-success">Đã duyệt</span></p>
+                    </div>
+                </div>
+                <?php if (!empty($approvedProposal['MoTa'])): ?>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <p><strong>Mô tả đề tài:</strong></p>
+                        <p><?php echo nl2br(htmlspecialchars($approvedProposal['MoTa'] ?? '')); ?></p>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+<?php elseif (isset($approvedThesis) && $approvedThesis): ?>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Thông tin đề tài</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>Đề tài của bạn đã được duyệt. Bạn có thể bắt đầu cập nhật tiến độ.
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Đề tài:</strong> <?php echo htmlspecialchars($approvedThesis['TenDeTai'] ?? ''); ?></p>
+                        <p><strong>Giảng viên hướng dẫn:</strong> <?php echo htmlspecialchars($approvedThesis['GiangVienHoTen'] ?? ''); ?></p>
+                        <p><strong>Email giảng viên:</strong> <?php echo htmlspecialchars($approvedThesis['GiangVienEmail'] ?? ''); ?></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Lĩnh vực:</strong> <?php echo htmlspecialchars($approvedThesis['LinhVuc'] ?? ''); ?></p>
+                        <p><strong>Ngày tạo:</strong> <?php echo !empty($approvedThesis['NgayTao']) ? date('d/m/Y', strtotime($approvedThesis['NgayTao'])) : 'Chưa xác định'; ?></p>
+                        <p><strong>Trạng thái:</strong> <span class="badge bg-success">Đã duyệt</span></p>
+                    </div>
+                </div>
+                <?php if (!empty($approvedThesis['MoTa'])): ?>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <p><strong>Mô tả đề tài:</strong></p>
+                        <p><?php echo nl2br(htmlspecialchars($approvedThesis['MoTa'] ?? '')); ?></p>
+                    </div>
+                </div>
+                <?php endif; ?>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <a href="../student/add-progress.php" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Cập nhật tiến độ mới
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php elseif (isset($studentStatus) && $studentStatus['TrangThaiDeTai'] == 'Đã có đề tài'): ?>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Thông tin đề tài</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>Đề tài của bạn đã được duyệt và đang được cập nhật trong hệ thống. Vui lòng làm mới trang sau vài phút để xem thông tin chi tiết.
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <p><strong>Đề tài:</strong> <span class="text-success">Đã có đề tài</span></p>
+                        <p><strong>Trạng thái:</strong> <span class="badge bg-success">Đã duyệt</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php else: ?>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>Bạn chưa có đề tài luận văn. Vui lòng <a href="../student/thesis.php">đăng ký đề tài</a> hoặc <a href="../student/thesis.php">đề xuất đề tài mới</a>.
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php if (count($progresses) > 0): ?>
 <div class="row">
@@ -111,61 +299,118 @@ include '../includes/header.php';
                 <h5 class="card-title mb-0">Lịch sử tiến độ</h5>
             </div>
             <div class="card-body">
-                <div class="timeline">
-                    <?php foreach ($progresses as $progress): ?>
-                        <div class="timeline-item">
-                            <div class="timeline-date"><?php echo date('d/m/Y H:i', strtotime($progress['NgayCapNhat'])); ?></div>
-                            <div class="card mb-3">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0">
-                                        <?php if ($progress['TrangThai'] == 'Đã hoàn thành'): ?>
-                                            <span class="badge bg-success me-2"><?php echo $progress['TrangThai']; ?></span>
-                                        <?php elseif ($progress['TrangThai'] == 'Đang thực hiện'): ?>
-                                            <span class="badge bg-primary me-2"><?php echo $progress['TrangThai']; ?></span>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Ngày cập nhật</th>
+                                <th>Nội dung</th>
+                                <th>Trạng thái</th>
+                                <th>Phản hồi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($progresses as $progress): ?>
+                                <tr>
+                                    <td><?php echo date('d/m/Y', strtotime($progress['NgayCapNhat'])); ?></td>
+                                    <td>
+                                        <a href="#" data-bs-toggle="modal" data-bs-target="#progressModal<?php echo $progress['TienDoID']; ?>">
+                                            <?php echo htmlspecialchars(substr($progress['NoiDung'], 0, 100)) . (strlen($progress['NoiDung']) > 100 ? '...' : ''); ?>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <?php if ($progress['TrangThai'] == 'Đã duyệt'): ?>
+                                            <span class="badge bg-success">Đã duyệt</span>
+                                        <?php elseif ($progress['TrangThai'] == 'Từ chối'): ?>
+                                            <span class="badge bg-danger">Từ chối</span>
                                         <?php else: ?>
-                                            <span class="badge bg-warning me-2"><?php echo $progress['TrangThai']; ?></span>
+                                            <span class="badge bg-warning">Chờ duyệt</span>
                                         <?php endif; ?>
-                                        Cập nhật tiến độ
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <p class="card-text"><?php echo nl2br(htmlspecialchars($progress['NoiDung'])); ?></p>
-                                    
-                                    <?php if (!empty($progress['PhanHoi'])): ?>
-                                        <div class="alert alert-info mt-3">
-                                            <h6 class="alert-heading"><i class="fas fa-comment-dots me-2"></i>Phản hồi từ giảng viên:</h6>
-                                            <p class="mb-0"><?php echo nl2br(htmlspecialchars($progress['PhanHoi'])); ?></p>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($progress['PhanHoi'])): ?>
+                                            <a href="#" data-bs-toggle="modal" data-bs-target="#feedbackModal<?php echo $progress['TienDoID']; ?>">
+                                                <i class="fas fa-comment-dots"></i> Xem phản hồi
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="text-muted">Chưa có phản hồi</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Modal for viewing progress details -->
+                                <div class="modal fade" id="progressModal<?php echo $progress['TienDoID']; ?>" tabindex="-1" aria-labelledby="progressModalLabel<?php echo $progress['TienDoID']; ?>" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="progressModalLabel<?php echo $progress['TienDoID']; ?>">
+                                                    Chi tiết tiến độ
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <h6>Ngày cập nhật:</h6>
+                                                    <p><?php echo date('d/m/Y H:i', strtotime($progress['NgayCapNhat'])); ?></p>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <h6>Nội dung:</h6>
+                                                    <p><?php echo nl2br(htmlspecialchars($progress['NoiDung'])); ?></p>
+                                                </div>
+                                                <?php if (!empty($progress['FileDinhKem'])): ?>
+                                                    <div class="mb-3">
+                                                        <h6>File đính kèm:</h6>
+                                                        <p><a href="../uploads/progress/<?php echo $progress['FileDinhKem']; ?>" target="_blank"><i class="fas fa-file"></i> <?php echo $progress['FileDinhKem']; ?></a></p>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if (!empty($progress['PhanHoi'])): ?>
+                                                    <div class="mb-3">
+                                                        <h6>Phản hồi từ giảng viên:</h6>
+                                                        <p><?php echo nl2br(htmlspecialchars($progress['PhanHoi'])); ?></p>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                            </div>
                                         </div>
-                                    <?php endif; ?>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
+                                
+                                <!-- Modal for viewing feedback -->
+                                <?php if (!empty($progress['PhanHoi'])): ?>
+                                    <div class="modal fade" id="feedbackModal<?php echo $progress['TienDoID']; ?>" tabindex="-1" aria-labelledby="feedbackModalLabel<?php echo $progress['TienDoID']; ?>" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="feedbackModalLabel<?php echo $progress['TienDoID']; ?>">
+                                                        Phản hồi từ giảng viên
+                                                    </h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p><?php echo nl2br(htmlspecialchars($progress['PhanHoi'])); ?></p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 </div>
-<?php else: ?>
+<?php elseif ($assignment): ?>
 <div class="row">
     <div class="col-md-12">
         <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>Bạn chưa có cập nhật tiến độ nào. Hãy bắt đầu cập nhật tiến độ thực hiện luận văn của bạn.
-        </div>
-        <div class="text-center">
-            <a href="add-progress.php" class="btn btn-primary">
-                <i class="fas fa-plus me-1"></i>Cập nhật tiến độ đầu tiên
-            </a>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
-
-<?php else: ?>
-<div class="row">
-    <div class="col-md-12">
-        <div class="alert alert-warning">
-            <i class="fas fa-exclamation-triangle me-2"></i>Bạn chưa được phân công giảng viên hướng dẫn hoặc chưa có đề tài luận văn. Vui lòng liên hệ với quản trị viên để biết thêm chi tiết.
+            <i class="fas fa-info-circle me-2"></i>Bạn chưa có cập nhật tiến độ nào. <a href="../student/add-progress.php" class="alert-link">Cập nhật tiến độ ngay</a>.
         </div>
     </div>
 </div>
